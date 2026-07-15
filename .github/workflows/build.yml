@@ -1,0 +1,318 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-24.04
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Bearpad v${{ steps.get_version.outputs.version }}
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            os: windows
+            arch: x64
+            target: ''
+            rust_target: ''
+          - platform: windows-latest
+            os: windows
+            arch: arm64
+            target: 'aarch64-pc-windows-msvc'
+            rust_target: 'aarch64-pc-windows-msvc'
+          - platform: ubuntu-24.04
+            os: linux
+            arch: x64
+            target: ''
+            rust_target: ''
+          - platform: macos-latest
+            os: macos
+            arch: universal
+            target: 'universal-apple-darwin'
+            rust_target: 'aarch64-apple-darwin,x86_64-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libappindicator3-dev \
+          librsvg2-dev \
+          patchelf \
+          rpm \
+          libwebkit2gtk-4.1-0=2.44.0-2 \
+          libwebkit2gtk-4.1-dev=2.44.0-2 \
+          libjavascriptcoregtk-4.1-0=2.44.0-2 \
+          libjavascriptcoregtk-4.1-dev=2.44.0-2 \
+          gir1.2-javascriptcoregtk-4.1=2.44.0-2 \
+          gir1.2-webkit2-4.1=2.44.0-2
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm xdg-utils \
+          libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+      - name: Setup Snapcraft
+        if: matrix.platform == 'ubuntu-24.04'
+        continue-on-error: true
+        run: |
+          sudo snap install lxd
+          sudo lxd waitready
+          sudo lxd init --auto
+          sudo usermod -aG lxd $USER
+          sudo iptables -F FORWARD
+          sudo iptables -P FORWARD ACCEPT
+          sudo snap install snapcraft --classic
+
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      # --- Windows Build (x64) ---
+      - name: Build Windows x64
+        if: matrix.platform == 'windows-latest' && matrix.arch == 'x64'
+        run: npm run tauri build
+
+      - name: Upload Windows x64 Artifacts
+        if: matrix.platform == 'windows-latest' && matrix.arch == 'x64'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
+          cp src-tauri/target/release/Bearpad.exe "Bearpad_${VERSION}_x64.exe"
+          cp "Bearpad_${VERSION}_x64.exe" "BearpadInstaller_${VERSION}_x64.exe"
+          gh release upload v$VERSION "Bearpad_${VERSION}_x64.exe" "BearpadInstaller_${VERSION}_x64.exe" --clobber
+          find src-tauri/target/release/bundle/nsis -name "*-setup.exe" -exec gh release upload v$VERSION {} --clobber \;
+          find src-tauri/target/release/bundle/nsis -name "*-setup.exe.sig" -exec gh release upload v$VERSION {} --clobber \;
+
+      - name: Create Chocolatey Package
+        if: matrix.platform == 'windows-latest' && matrix.arch == 'x64'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p packaging/choco/tools
+          cp src-tauri/target/release/Bearpad.exe packaging/choco/tools/Bearpad.exe
+          cp LICENSE packaging/choco/tools/LICENSE.txt
+          choco pack packaging/choco/bearpad-app.nuspec --version ${{ needs.create-release.outputs.version }} --outdir .
+          gh release upload v${{ needs.create-release.outputs.version }} bearpad-app.${{ needs.create-release.outputs.version }}.nupkg --clobber
+
+      - name: Publish to Chocolatey
+        if: matrix.platform == 'windows-latest' && matrix.arch == 'x64'
+        continue-on-error: true
+        shell: pwsh
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+        run: |
+          choco apikey --key $env:CHOCO_API_KEY --source https://push.chocolatey.org/
+          choco push bearpad-app.${{ needs.create-release.outputs.version }}.nupkg --source https://push.chocolatey.org/
+
+      # --- Windows Build (ARM64) ---
+      - name: Build Windows ARM64
+        if: matrix.platform == 'windows-latest' && matrix.arch == 'arm64'
+        run: npm run tauri build -- --target aarch64-pc-windows-msvc
+
+      - name: Upload Windows ARM64 Artifacts
+        if: matrix.platform == 'windows-latest' && matrix.arch == 'arm64'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
+          cp src-tauri/target/aarch64-pc-windows-msvc/release/Bearpad.exe "Bearpad_${VERSION}_arm64.exe"
+          cp "Bearpad_${VERSION}_arm64.exe" "BearpadInstaller_${VERSION}_arm64.exe"
+          gh release upload v$VERSION "Bearpad_${VERSION}_arm64.exe" "BearpadInstaller_${VERSION}_arm64.exe" --clobber
+          find src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis -name "*-setup.exe" -exec gh release upload v$VERSION {} --clobber \;
+          find src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis -name "*-setup.exe.sig" -exec gh release upload v$VERSION {} --clobber \;
+
+      # --- Linux Build ---
+      - name: Pre-download AppImage Dependencies
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          mkdir -p ~/.cache/tauri
+          wget -q https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-x86_64 -O ~/.cache/tauri/AppRun-x86_64
+          wget -q https://github.com/tauri-apps/binary-releases/releases/download/linuxdeploy/linuxdeploy-x86_64.AppImage -O ~/.cache/tauri/linuxdeploy-x86_64.AppImage
+          chmod +x ~/.cache/tauri/AppRun-x86_64 ~/.cache/tauri/linuxdeploy-x86_64.AppImage
+
+      - name: Build Linux
+        if: matrix.platform == 'ubuntu-24.04'
+        run: npm run tauri build
+
+      - name: Upload Linux Artifacts
+        if: matrix.platform == 'ubuntu-24.04'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          find src-tauri/target/release/bundle/deb -name "*.deb" -exec gh release upload v${{ needs.create-release.outputs.version }} {} --clobber \;
+          find src-tauri/target/release/bundle/rpm -name "*.rpm" -exec gh release upload v${{ needs.create-release.outputs.version }} {} --clobber \;
+          find src-tauri/target/release/bundle/appimage -name "*.AppImage" -exec gh release upload v${{ needs.create-release.outputs.version }} {} --clobber \;
+          find src-tauri/target/release/bundle/appimage -name "*.AppImage.sig" -exec gh release upload v${{ needs.create-release.outputs.version }} {} --clobber \;
+
+      - name: Build and Publish Snap Package
+        if: matrix.platform == 'ubuntu-24.04'
+        continue-on-error: true
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: |
+          # Build snap
+          sg lxd -c 'snapcraft pack'
+          sg lxd -c 'snapcraft pack'
+          
+          # Find and upload the snap
+          SNAP_FILE=$(ls *.snap | head -n 1)
+          if [ -n "$SNAP_FILE" ]; then
+            gh release upload v${{ needs.create-release.outputs.version }} $SNAP_FILE --clobber
+            
+            # Publish to snap store
+            snapcraft push $SNAP_FILE --release stable
+          else
+            echo "Snap file not found!"
+            exit 1
+          fi
+
+      # --- MacOS Build ---
+      - name: Build MacOS (Universal)
+        if: matrix.platform == 'macos-latest'
+        env:
+          # Fix OOM issue
+          NODE_OPTIONS: "--max-old-space-size=8192"
+        run: npm run tauri build -- --target universal-apple-darwin
+
+      - name: Upload MacOS Artifacts
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" -exec gh release upload v${{ needs.create-release.outputs.version }} {} --clobber \;
+          find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app.tar.gz" -exec gh release upload v${{ needs.create-release.outputs.version }} {} --clobber \;
+          find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app.tar.gz.sig" -exec gh release upload v${{ needs.create-release.outputs.version }} {} --clobber \;
+
+  generate-update-feed:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    # Run even when one matrix leg failed (the existing sig_count > 0 sanity
+    # check inside still gates publication on at least one platform succeeding).
+    if: false
+    steps:
+      - name: Generate latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ needs.create-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p ./sigs
+          # Fail loudly on auth/rate-limit/transient issues — never silently
+          # publish an empty latest.json that would overwrite a previously-good one.
+          gh release download "v$VERSION" --repo "$REPO" --pattern "*.sig" --dir ./sigs
+
+          sig_count=$(find ./sigs -maxdepth 1 -name "*.sig" -type f | wc -l)
+          if [ "$sig_count" -eq 0 ]; then
+            echo "ERROR: no .sig files in release v${VERSION} — every matrix build either failed or didn't produce updater artifacts. Aborting before overwriting latest.json with an empty feed." >&2
+            exit 1
+          fi
+
+          # Default Tauri v2 updater mode: macOS .app.tar.gz, Windows NSIS *-setup.exe, Linux *.AppImage
+          # (NOT v1Compatible mode — which would use .nsis.zip / .AppImage.tar.gz wrappers)
+          MAC_SIG=$(ls ./sigs/*.app.tar.gz.sig 2>/dev/null | head -1 || true)
+          WIN_X64_SIG=$(ls ./sigs/*x64*-setup.exe.sig 2>/dev/null | head -1 || true)
+          WIN_ARM_SIG=$(ls ./sigs/*arm64*-setup.exe.sig 2>/dev/null | head -1 || true)
+          LINUX_SIG=$(ls ./sigs/*.AppImage.sig 2>/dev/null | head -1 || true)
+
+          platform_entry() {
+            local sig_file="$1"
+            if [ -z "$sig_file" ] || [ ! -f "$sig_file" ]; then
+              printf 'null'
+              return
+            fi
+            local artifact
+            artifact=$(basename "${sig_file%.sig}")
+            # Strip CR/LF that Windows-produced .sig files may carry; minisign signatures
+            # don't contain whitespace within the payload, so it's safe to remove.
+            local sig
+            sig=$(tr -d '\r\n' < "$sig_file")
+            local url="https://github.com/${REPO}/releases/download/v${VERSION}/${artifact}"
+            jq -n --arg sig "$sig" --arg url "$url" '{signature: $sig, url: $url}'
+          }
+
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          DARWIN_AARCH64=$(platform_entry "$MAC_SIG")
+          DARWIN_X86_64=$(platform_entry "$MAC_SIG")
+          WINDOWS_X86_64=$(platform_entry "$WIN_X64_SIG")
+          WINDOWS_AARCH64=$(platform_entry "$WIN_ARM_SIG")
+          LINUX_X86_64=$(platform_entry "$LINUX_SIG")
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "See https://github.com/${REPO}/releases/tag/v${VERSION}" \
+            --arg pub_date "$DATE" \
+            --argjson darwin_aarch64 "$DARWIN_AARCH64" \
+            --argjson darwin_x86_64 "$DARWIN_X86_64" \
+            --argjson windows_x86_64 "$WINDOWS_X86_64" \
+            --argjson windows_aarch64 "$WINDOWS_AARCH64" \
+            --argjson linux_x86_64 "$LINUX_X86_64" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: ({
+                "darwin-aarch64":   $darwin_aarch64,
+                "darwin-x86_64":    $darwin_x86_64,
+                "windows-x86_64":   $windows_x86_64,
+                "windows-aarch64":  $windows_aarch64,
+                "linux-x86_64":     $linux_x86_64
+              } | with_entries(select(.value != null)))
+            }' > latest.json
+
+          cat latest.json
+          gh release upload "v$VERSION" latest.json --clobber --repo "$REPO"

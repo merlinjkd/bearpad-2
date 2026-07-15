@@ -27,9 +27,14 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
   },
   "plugins": {
-    "clipboard-manager": {}
+    "clipboard-manager": {},
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMzRDBFQjY0MDJBNzdFNzMKUldSemZxY0NaT3ZRd3pTOGg0ZHljbnpwZVVKSFdFdGRrTEc0U1pObGgreW5RbEoxb0xJbXVTcVEK",
+      "endpoints": ["https://github.com/merlinjkd/bearpad2/releases/download/latest/update.json"]
+    }
   }
 }
