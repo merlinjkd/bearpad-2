@@ -21,17 +21,19 @@
 		items: []
 	});
 
-	let editorEl: HTMLDivElement;
+	function onEditorReady(ref: any) {
+		editorRef = ref;
+	}
 
 	function onContextMenu(e: MouseEvent) {
 		e.preventDefault();
 		const isInsideEditor = !!(e.target as HTMLElement).closest('.cm-editor');
-		const selection = editorRef?.hasSelection();
+		const hasSelection = editorRef?.hasSelection() || false;
 
-		const items = [];
+		const items: any[] = [];
 
 		if (isInsideEditor) {
-			if (selection) {
+			if (hasSelection) {
 				items.push(
 					{ label: 'Cut', shortcut: '⌘X', onClick: () => editorRef?.handleCut() },
 					{ label: 'Copy', shortcut: '⌘C', onClick: () => editorRef?.handleCopy() }
@@ -43,9 +45,9 @@
 				{ label: 'Undo', shortcut: '⌘Z', onClick: () => editorRef?.undo() },
 				{ label: 'Redo', shortcut: '⌘Y', onClick: () => editorRef?.redo() },
 				{ separator: true },
-				{ label: 'lowercase', disabled: !selection, onClick: () => { editorRef?.transformSelection('lowercase'); hideMenu(); } },
-							{ label: 'UPPERCASE', disabled: !selection, onClick: () => { editorRef?.transformSelection('uppercase'); hideMenu(); } },
-							{ label: 'Title Case', disabled: !selection, onClick: () => { editorRef?.transformSelection('propercase'); hideMenu(); } },
+				{ label: 'lowercase', disabled: !hasSelection, onClick: () => { editorRef?.transformSelection('lowercase'); hideMenu(); } },
+				{ label: 'UPPERCASE', disabled: !hasSelection, onClick: () => { editorRef?.transformSelection('uppercase'); hideMenu(); } },
+				{ label: 'Title Case', disabled: !hasSelection, onClick: () => { editorRef?.transformSelection('propercase'); hideMenu(); } },
 				{ separator: true }
 			);
 		}
@@ -71,9 +73,7 @@
 	});
 </script>
 
-<div bind:this={editorEl}>
-	<Editor bind:editorRef />
-</div>
+<Editor onReady={onEditorReady} />
 
 {#if contextMenu.show}
 	<ContextMenu {contextMenu} onhide={hideMenu} />

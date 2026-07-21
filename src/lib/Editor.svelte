@@ -2,14 +2,14 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { EditorView, keymap, placeholder } from '@codemirror/view';
 	import { EditorState, Compartment } from '@codemirror/state';
-	import { defaultKeymap, history, historyKeymap, indentLess, indentMore } from '@codemirror/commands';
+	import { defaultKeymap, history, historyKeymap, indentLess, indentMore, undo, redo } from '@codemirror/commands';
 	import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 	import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 	import { searchKeymap } from '@codemirror/search';
 	import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 	import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
 
-	let { editorRef }: { editorRef?: any } = $props();
+	let { onReady }: { onReady?: (ref: any) => void } = $props();
 
 	let container: HTMLDivElement;
 	let view: EditorView;
@@ -60,73 +60,77 @@
 	onMount(() => {
 		createEditor();
 
-		editorRef = {
-			hasSelection: () => !view.state.selection.main.empty,
+		if (onReady) {
+			onReady({
+				hasSelection: () => !view.state.selection.main.empty,
 
-			handleCopy: async () => {
-				const text = getSelectedText();
-				if (!text) return;
-				try {
-					await writeText(text);
-				} catch {
-					await navigator.clipboard.writeText(text);
-				}
-			},
+				handleCopy: async () => {
+					const text = getSelectedText();
+					if (!text) return;
+					try {
+						await writeText(text);
+					} catch {
+						await navigator.clipboard.writeText(text);
+					}
+				},
 
-			handleCut: async () => {
-				const text = getSelectedText();
-				if (!text) return;
-				try {
-					await writeText(text);
-				} catch {
-					await navigator.clipboard.writeText(text);
-				}
-				const sel = view.state.selection.main;
-				view.dispatch({
-					changes: { from: sel.from, to: sel.to, insert: '' },
-				});
-			},
+				handleCut: async () => {
+					const text = getSelectedText();
+					if (!text) return;
+					try {
+						await writeText(text);
+					} catch {
+						await navigator.clipboard.writeText(text);
+					}
+					const sel = view.state.selection.main;
+					view.dispatch({
+						changes: { from: sel.from, to: sel.to, insert: '' },
+					});
+				},
 
-			handlePaste: async () => {
-				let rawText = '';
-				try {
-					rawText = await navigator.clipboard.readText();
-					if (!rawText) rawText = (await readText()) ?? '';
-				} catch {
-					rawText = (await readText()) ?? '';
-				}
-				if (!rawText) return;
-				const sel = view.state.selection.main;
-				view.dispatch({
-					changes: { from: sel.from, to: sel.to, insert: rawText },
-					selection: { anchor: sel.from + rawText.length },
-				});
-			},
+				handlePaste: async () => {
+					let rawText = '';
+					try {
+						rawText = await navigator.clipboard.readText();
+						if (!rawText) rawText = (await readText()) ?? '';
+					} catch {
+						rawText = (await readText()) ?? '';
+					}
+					if (!rawText) return;
+					const sel = view.state.selection.main;
+					view.dispatch({
+						changes: { from: sel.from, to: sel.to, insert: rawText },
+						selection: { anchor: sel.from + rawText.length },
+					});
+				},
 
-			undo: () => {
-				view.dispatch({ effects: history() });
-			},
+				undo: () => {
+					// CM6 undo via command
+					undo(view);
+				},
 
-			redo: () => {
-				view.dispatch({ effects: history() });
-			},
+				redo: () => {
+					// CM6 redo via command
+					redo(view);
+				},
 
-			handleSelectAll: () => {
-				view.dispatch({
-					selection: { anchor: 0, head: view.state.doc.length },
-				});
-			},
+				handleSelectAll: () => {
+					view.dispatch({
+						selection: { anchor: 0, head: view.state.doc.length },
+					});
+				},
 
-			transformSelection: (type: 'lowercase' | 'uppercase' | 'propercase') => {
-				const text = getSelectedText();
-				if (!text) return;
-				let newText = text;
-				if (type === 'lowercase') newText = text.toLowerCase();
-				else if (type === 'uppercase') newText = text.toUpperCase();
-				else if (type === 'propercase') newText = text.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-				replaceSelection(newText);
-			},
-		};
+				transformSelection: (type: 'lowercase' | 'uppercase' | 'propercase') => {
+					const text = getSelectedText();
+					if (!text) return;
+					let newText = text;
+					if (type === 'lowercase') newText = text.toLowerCase();
+					else if (type === 'uppercase') newText = text.toUpperCase();
+					else if (type === 'propercase') newText = text.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+					replaceSelection(newText);
+				},
+			});
+		}
 	});
 
 	onDestroy(() => {
