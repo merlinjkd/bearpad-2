@@ -43,9 +43,9 @@
 				{ label: 'Undo', shortcut: '⌘Z', onClick: () => editorRef?.undo() },
 				{ label: 'Redo', shortcut: '⌘Y', onClick: () => editorRef?.redo() },
 				{ separator: true },
-				{ label: 'lowercase', disabled: !selection, onClick: () => { editorRef?.transformSelection('lowercase'); contextMenu.show = false; } },
-				{ label: 'UPPERCASE', disabled: !selection, onClick: () => { editorRef?.transformSelection('uppercase'); contextMenu.show = false; } },
-				{ label: 'Title Case', disabled: !selection, onClick: () => { editorRef?.transformSelection('propercase'); contextMenu.show = false; } },
+				{ label: 'lowercase', disabled: !selection, onClick: () => { editorRef?.transformSelection('lowercase'); hideMenu(); } },
+							{ label: 'UPPERCASE', disabled: !selection, onClick: () => { editorRef?.transformSelection('uppercase'); hideMenu(); } },
+							{ label: 'Title Case', disabled: !selection, onClick: () => { editorRef?.transformSelection('propercase'); hideMenu(); } },
 				{ separator: true }
 			);
 		}

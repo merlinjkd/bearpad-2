@@ -16,7 +16,7 @@
 
 	function createEditor() {
 		const state = EditorState.create({
-			doc: '# Bearpad 2\n\nCodeMirror 6 spike.\n\nSelect some text and right-click to test **text transformations** (lowercase, UPPERCASE, Title Case).\n\n- Paste works via Tauri clipboard plugin\n- Undo/Redo via CM6 history\n- Find: ⌘F (coming soon)\n',
+			doc: '',
 			extensions: [
 				history(),
 				keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, ...completionKeymap]),
