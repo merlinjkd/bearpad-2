@@ -31,6 +31,6 @@
     "createUpdaterArtifacts": false
   },
   "plugins": {
-    "clipboard-manager": {}
+    "clipboard-manager": null
   }
 }
