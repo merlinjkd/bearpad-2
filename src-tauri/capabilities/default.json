@@ -1,11 +1,14 @@
 {
   "identifier": "default",
-  "description": "Capability for the main window",
+  "description": "Default capabilities for Bearpad 2",
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "clipboard-manager:default",
-    "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text"
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask",
+    "dialog:allow-confirm"
   ]
 }

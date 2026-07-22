@@ -1,6 +1,6 @@
 [package]
 name = "bearpad2"
-version = "0.1.4"
+version = "0.1.5"
 description = "Bearpad 2 - CM6 spike"
 authors = ["you"]
 edition = "2021"
@@ -15,5 +15,6 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
