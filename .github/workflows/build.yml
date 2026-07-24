@@ -72,15 +72,8 @@ jobs:
         run: npm run tauri build
         shell: pwsh
         env:
-          # Disable updater signing (no private key in secrets yet)
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-
-      - name: List build outputs
-        run: |
-          $files = Get-ChildItem -Recurse src-tauri/target/release/bundle -File
-          $files | Select-Object FullName, Length
-        shell: pwsh
 
       - name: Upload Windows Artifacts
         shell: pwsh
@@ -88,20 +81,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version = "${{ needs.create-release.outputs.version }}"
-          Write-Host "=== Bundles ==="
-          Get-ChildItem -Recurse src-tauri/target/release/bundle -File | ForEach-Object {
-            Write-Host $_.FullName
-          }
-          # Upload MSI
+          # MSI
           Get-ChildItem -Recurse src-tauri/target/release/bundle/msi -Filter "*.msi" | ForEach-Object {
-            $name = "Bearpad-2_${version}_$($_.Name)"
-            Write-Host "Uploading $name"
             gh release upload "v$version" $_.FullName --clobber --repo $env:GITHUB_REPOSITORY
           }
-          # Upload NSIS .exe
+          # NSIS .exe
           Get-ChildItem -Recurse src-tauri/target/release/bundle/nsis -Filter "*.exe" | ForEach-Object {
-            $name = "Bearpad-2_${version}_$($_.Name)"
-            Write-Host "Uploading $name"
             gh release upload "v$version" $_.FullName --clobber --repo $env:GITHUB_REPOSITORY
           }
 
@@ -142,4 +127,68 @@ jobs:
         run: |
           version="${{ needs.create-release.outputs.version }}"
           find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" -exec gh release upload "v$version" {} --clobber \;
-          find src-tauri/target/universal-apple-darwin/release/bundle/macos -maxdepth 1 -name "*.app" -type d
+
+  build-linux:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            patchelf
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build Linux
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+
+      - name: Upload Linux Artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          find src-tauri/target/release/bundle/deb -name "*.deb" -exec gh release upload "v$version" {} --clobber \;
+          find src-tauri/target/release/bundle/appimage -name "*.AppImage" -exec gh release upload "v$version" {} --clobber \; 2>/dev/null || true
+          find src-tauri/target/release/bundle/rpm -name "*.rpm" -exec gh release upload "v$version" {} --clobber \; 2>/dev/null || true
+
+  publish:
+    needs: [create-release, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          gh release edit "v$version" \
+            --draft=false \
+            --latest \
+            --repo "${{ github.repository }}"
