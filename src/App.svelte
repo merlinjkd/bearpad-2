@@ -302,23 +302,19 @@
 			items: [
 				await MenuItem.new({
 					text: 'Zoom In',
-					accelerator: 'CmdOrCtrl+=',
 					action: () => handleSettingsChange({ fontSize: Math.min(32, fontSize + 1) }),
 				}),
 				await MenuItem.new({
 					text: 'Zoom Out',
-					accelerator: 'CmdOrCtrl+-',
 					action: () => handleSettingsChange({ fontSize: Math.max(10, fontSize - 1) }),
 				}),
 				await MenuItem.new({
 					text: 'Reset Zoom',
-					accelerator: 'CmdOrCtrl+0',
 					action: () => handleSettingsChange({ fontSize: 14 }),
 				}),
 				await PredefinedMenuItem.new({ item: 'Separator' }),
 				await MenuItem.new({
 					text: 'Toggle Theme',
-					accelerator: 'CmdOrCtrl+\\',
 					action: () => {
 						handleSettingsChange({
 							theme: resolvedTheme === 'dark' ? 'light' : 'dark',
@@ -327,7 +323,6 @@
 				}),
 				await MenuItem.new({
 					text: 'Toggle Word Wrap',
-					accelerator: 'Alt+Z',
 					action: () => handleSettingsChange({ wordWrap: !wordWrap }),
 				}),
 			],
@@ -437,6 +432,34 @@
 
 		// Context menu listener
 		document.addEventListener('contextmenu', onContextMenu as EventListener);
+
+		// View shortcuts handled in-page: Windows WebView2 swallows OS menu
+		// accelerators when the webview has focus (and hijacks Ctrl+= as browser
+		// zoom), so keydown is the one path that behaves identically everywhere.
+		window.addEventListener('keydown', (e) => {
+			const k = e.key;
+			const mod = e.metaKey || e.ctrlKey;
+			if (mod && !e.altKey) {
+				if (k === '=' || k === '+') {
+					e.preventDefault();
+					handleSettingsChange({ fontSize: Math.min(32, fontSize + 1) });
+				} else if (k === '-' || k === '_') {
+					e.preventDefault();
+					handleSettingsChange({ fontSize: Math.max(10, fontSize - 1) });
+				} else if (k === '0') {
+					e.preventDefault();
+					handleSettingsChange({ fontSize: 14 });
+				} else if (k === '\\') {
+					e.preventDefault();
+					handleSettingsChange({
+						theme: resolvedTheme === 'dark' ? 'light' : 'dark',
+					});
+				}
+			} else if (e.altKey && !mod && (k === 'z' || k === 'Z')) {
+				e.preventDefault();
+				handleSettingsChange({ wordWrap: !wordWrap });
+			}
+		});
 		document.addEventListener('click', (e) => {
 			if (
 				ctxMenu.show &&
