@@ -98,9 +98,13 @@
 	async function saveFile() {
 		if (currentPath) {
 			const content = getContent();
-			await invoke('write_file', { path: currentPath, content });
-			editorRef?.markSaved();
-			updateTitle();
+			try {
+				await invoke('write_file', { path: currentPath, content });
+				editorRef?.markSaved();
+				updateTitle();
+			} catch (e) {
+				console.error('Failed to save file:', e);
+			}
 		} else {
 			await saveFileAs();
 		}
@@ -111,10 +115,14 @@
 		if (!selected) return;
 		const path = selected as string;
 		const content = getContent();
-		await invoke('write_file', { path, content });
-		currentPath = path;
-		editorRef?.markSaved();
-		updateTitle();
+		try {
+			await invoke('write_file', { path, content });
+			currentPath = path;
+			editorRef?.markSaved();
+			updateTitle();
+		} catch (e) {
+			console.error('Failed to save file:', e);
+		}
 	}
 
 	// ─── settings ────────────────────────────────────────
@@ -307,12 +315,11 @@
 		const win = getCurrentWindow();
 		win.onCloseRequested(async (event) => {
 			if (isDirty()) {
-				event.preventDefault();
 				const ok = await showConfirm('You have unsaved changes. Discard and close?', {
 					title: 'Bearpad 2',
 					kind: 'warning',
 				});
-				if (ok) win.close();
+				if (!ok) event.preventDefault();
 			}
 		});
 
