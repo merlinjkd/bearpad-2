@@ -32,6 +32,7 @@
 	let theme = $state<Theme>('dark');
 	let fontSize = $state(14);
 	let fontFamily = $state("'SF Mono', 'Fira Code', 'Cascadia Code', monospace");
+	let wordWrap = $state(true);
 	let resolvedTheme = $state<'dark' | 'light'>('dark');
 
 	let ctxMenu = $state<{ show: boolean; x: number; y: number; items: any[] }>({
@@ -134,6 +135,7 @@
 			if (s.theme) theme = s.theme;
 			if (s.fontSize != null) fontSize = s.fontSize;
 			if (s.fontFamily) fontFamily = s.fontFamily;
+			if (s.wordWrap != null) wordWrap = s.wordWrap;
 		} catch { /* defaults */ }
 		resolveTheme();
 	}
@@ -141,7 +143,7 @@
 	async function saveSettings() {
 		try {
 			await invoke('write_settings', {
-				json: JSON.stringify({ theme, fontSize, fontFamily }),
+				json: JSON.stringify({ theme, fontSize, fontFamily, wordWrap }),
 			});
 		} catch (e) {
 			console.error('Failed to save settings:', e);
@@ -160,11 +162,12 @@
 	}
 
 	function handleSettingsChange(
-		patch: Partial<{ theme: Theme; fontSize: number; fontFamily: string }>,
+		patch: Partial<{ theme: Theme; fontSize: number; fontFamily: string; wordWrap: boolean }>,
 	) {
 		if (patch.theme !== undefined) theme = patch.theme;
 		if (patch.fontSize !== undefined) fontSize = patch.fontSize;
 		if (patch.fontFamily !== undefined) fontFamily = patch.fontFamily;
+		if (patch.wordWrap !== undefined) wordWrap = patch.wordWrap;
 		resolveTheme();
 		saveSettings();
 	}
@@ -322,6 +325,11 @@
 						});
 					},
 				}),
+				await MenuItem.new({
+					text: 'Toggle Word Wrap',
+					accelerator: 'Alt+Z',
+					action: () => handleSettingsChange({ wordWrap: !wordWrap }),
+				}),
 			],
 		});
 
@@ -446,6 +454,7 @@
 		theme={resolvedTheme}
 		{fontSize}
 		{fontFamily}
+		{wordWrap}
 	/>
 
 	{#if ctxMenu.show}

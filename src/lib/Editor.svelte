@@ -29,11 +29,13 @@
 		theme = 'dark',
 		fontSize = 14,
 		fontFamily = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+		wordWrap = true,
 	}: {
 		onReady?: (ref: EditorExposed) => void;
 		theme?: string;
 		fontSize?: number;
 		fontFamily?: string;
+		wordWrap?: boolean;
 	} = $props();
 
 	let container: HTMLDivElement;
@@ -43,6 +45,7 @@
 	const themeCompartment = new Compartment();
 	const fontSizeCompartment = new Compartment();
 	const fontFamilyCompartment = new Compartment();
+	const wrapCompartment = new Compartment();
 
 	function computeTheme(themeName: string) {
 		if (themeName === 'light') {
@@ -94,6 +97,7 @@
 				themeCompartment.of(computeTheme(theme)),
 				fontSizeCompartment.of(computeFontSize(fontSize)),
 				fontFamilyCompartment.of(computeFontFamily(fontFamily)),
+				wrapCompartment.of(wordWrap ? [EditorView.lineWrapping] : []),
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) {
 						dirty = true;
@@ -140,6 +144,13 @@
 		if (!view) return;
 		view.dispatch({
 			effects: fontFamilyCompartment.reconfigure(computeFontFamily(fontFamily)),
+		});
+	});
+
+	$effect(() => {
+		if (!view) return;
+		view.dispatch({
+			effects: wrapCompartment.reconfigure(wordWrap ? [EditorView.lineWrapping] : []),
 		});
 	});
 

@@ -3,6 +3,7 @@
 		theme: 'dark' | 'light' | 'system';
 		fontSize: number;
 		fontFamily: string;
+		wordWrap: boolean;
 	}
 
 	let {
@@ -80,6 +81,19 @@
 					{#each FONT_OPTIONS as opt}
 						<option value={opt.value}>{opt.label}</option>
 					{/each}
+				</select>
+			</div>
+
+			<div class="field">
+				<label for="word-wrap-select">Word Wrap</label>
+				<select
+					id="word-wrap-select"
+					value={settings.wordWrap ? 'on' : 'off'}
+					onchange={(e) =>
+						onChange({ wordWrap: (e.target as HTMLSelectElement).value === 'on' })}
+				>
+					<option value="on">On</option>
+					<option value="off">Off</option>
 				</select>
 			</div>
 		</div>
