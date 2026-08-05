@@ -183,28 +183,33 @@
 		await loadSettings();
 
 		// Build native menu items
+		const isMac = navigator.userAgent.includes('Macintosh');
+
 		const settingsItem = await MenuItem.new({
 			text: 'Settings...',
 			accelerator: 'CmdOrCtrl+,',
 			action: () => openSettings(),
 		});
 
-		const appSub = await Submenu.new({
-			text: '',
-			items: [
-				await PredefinedMenuItem.new({ item: { About: null } }),
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				settingsItem,
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				await PredefinedMenuItem.new({ item: 'Services' }),
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				await PredefinedMenuItem.new({ item: 'Hide' }),
-				await PredefinedMenuItem.new({ item: 'HideOthers' }),
-				await PredefinedMenuItem.new({ item: 'ShowAll' }),
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				await PredefinedMenuItem.new({ item: 'Quit' }),
-			],
-		});
+		// macOS-only app menu (About/Hide/Quit); Windows/Linux convention has no app menu
+		const appSub = isMac
+			? await Submenu.new({
+					text: '',
+					items: [
+						await PredefinedMenuItem.new({ item: { About: null } }),
+						await PredefinedMenuItem.new({ item: 'Separator' }),
+						settingsItem,
+						await PredefinedMenuItem.new({ item: 'Separator' }),
+						await PredefinedMenuItem.new({ item: 'Services' }),
+						await PredefinedMenuItem.new({ item: 'Separator' }),
+						await PredefinedMenuItem.new({ item: 'Hide' }),
+						await PredefinedMenuItem.new({ item: 'HideOthers' }),
+						await PredefinedMenuItem.new({ item: 'ShowAll' }),
+						await PredefinedMenuItem.new({ item: 'Separator' }),
+						await PredefinedMenuItem.new({ item: 'Quit' }),
+					],
+				})
+			: null;
 
 		const fileSub = await Submenu.new({
 			text: 'File',
@@ -220,6 +225,9 @@
 					action: () => openFile(),
 				}),
 				await PredefinedMenuItem.new({ item: 'Separator' }),
+				...(isMac
+					? []
+					: [settingsItem, await PredefinedMenuItem.new({ item: 'Separator' })]),
 				await MenuItem.new({
 					text: 'Save',
 					accelerator: 'CmdOrCtrl+S',
@@ -236,6 +244,15 @@
 					accelerator: 'CmdOrCtrl+W',
 					action: () => getCurrentWindow().close(),
 				}),
+				...(isMac
+					? []
+					: [
+							await PredefinedMenuItem.new({ item: 'Separator' }),
+							await MenuItem.new({
+								text: 'Exit',
+								action: () => getCurrentWindow().close(),
+							}),
+						]),
 			],
 		});
 
@@ -308,7 +325,11 @@
 			],
 		});
 
-		const menu = await Menu.new({ items: [appSub, fileSub, editSub, viewSub] });
+		const menu = await Menu.new({
+			items: [appSub, fileSub, editSub, viewSub].filter(
+				(x): x is NonNullable<typeof x> => x != null,
+			),
+		});
 		await menu.setAsAppMenu();
 
 		// Close confirmation
