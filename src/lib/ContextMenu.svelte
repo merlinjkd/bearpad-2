@@ -38,10 +38,10 @@
 		border: 1px solid #3c3c3c;
 		border-radius: 6px;
 		padding: 4px 0;
-		min-width: 200px;
+		min-width: 220px;
 		box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-		font-size: 13px;
+		font-size: 18px;
 	}
 	hr {
 		margin: 4px 8px;
@@ -58,7 +58,7 @@
 		background: transparent;
 		color: #cccccc;
 		cursor: pointer;
-		font-size: 13px;
+		font-size: 18px;
 		text-align: left;
 		box-sizing: border-box;
 	}
@@ -76,7 +76,7 @@
 	.shortcut {
 		margin-left: 32px;
 		color: #6e6e6e;
-		font-size: 12px;
+		font-size: 14px;
 	}
 	.menu-item:hover:not(:disabled) .shortcut {
 		color: #a0a0a0;

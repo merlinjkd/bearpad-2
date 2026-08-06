@@ -197,10 +197,14 @@
 				handlePaste: async () => {
 					let rawText = '';
 					try {
-						rawText = await navigator.clipboard.readText();
-						if (!rawText) rawText = (await readText()) ?? '';
-					} catch {
 						rawText = (await readText()) ?? '';
+						if (!rawText) rawText = await navigator.clipboard.readText();
+					} catch {
+						try {
+							rawText = await navigator.clipboard.readText();
+						} catch {
+							rawText = '';
+						}
 					}
 					if (!rawText) return;
 					const sel = view.state.selection.main;

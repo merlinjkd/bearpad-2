@@ -54,6 +54,7 @@
 			items: [
 				{ label: 'New', action: () => newFile() },
 				{ label: 'Open...', action: () => openFile() },
+				{ label: 'Settings...', action: () => openSettings() },
 				{ separator: true },
 				{ label: 'Save', action: () => saveFile() },
 				{ label: 'Save As...', action: () => saveFileAs() },
