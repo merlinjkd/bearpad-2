@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { EditorView, keymap, placeholder } from '@codemirror/view';
+	import { EditorView, keymap } from '@codemirror/view';
 	import { EditorState, Compartment } from '@codemirror/state';
 	import { defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands';
 	import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -55,7 +55,7 @@
 	function computeTheme(themeName: string) {
 		if (themeName === 'light') {
 			return EditorView.theme({
-				'&': { backgroundColor: '#ffffff', color: '#333333', height: '100vh' },
+				'&': { backgroundColor: '#ffffff', color: '#333333', height: '100%' },
 				'.cm-gutters': { backgroundColor: '#f5f5f5', color: '#999999', border: 'none' },
 				'.cm-activeLineGutter': { backgroundColor: '#e8e8e8' },
 				'.cm-activeLine': { backgroundColor: '#f0f0f044' },
@@ -66,7 +66,7 @@
 			});
 		}
 		return EditorView.theme({
-			'&': { backgroundColor: '#1e1e1e', color: '#d4d4d4', height: '100vh' },
+			'&': { backgroundColor: '#1e1e1e', color: '#d4d4d4', height: '100%' },
 			'.cm-gutters': { backgroundColor: '#252526', color: '#858585', border: 'none' },
 			'.cm-activeLineGutter': { backgroundColor: '#2a2d2e' },
 			'.cm-activeLine': { backgroundColor: '#2a2d2e44' },
@@ -98,7 +98,6 @@
 				markdown({ base: markdownLanguage }),
 				syntaxHighlighting(defaultHighlightStyle),
 				autocompletion(),
-				placeholder('Start typing...'),
 				themeCompartment.of(computeTheme(theme)),
 				fontSizeCompartment.of(computeFontSize(fontSize)),
 				fontFamilyCompartment.of(computeFontFamily(fontFamily)),
@@ -262,4 +261,4 @@
 	});
 </script>
 
-<div bind:this={container}></div>
+<div class="editor-host" bind:this={container}></div>

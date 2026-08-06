@@ -5,7 +5,6 @@
 	import SettingsModal from './lib/SettingsModal.svelte';
 	import { invoke } from '@tauri-apps/api/core';
 	import { open, save as showSaveDialog, confirm as showConfirm } from '@tauri-apps/plugin-dialog';
-	import { Menu, Submenu, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 
 	type Theme = 'dark' | 'light' | 'system';
@@ -41,6 +40,68 @@
 		y: 0,
 		items: [],
 	});
+
+	// ─── menu bar (in-window HTML — native OS menus can't be resized) ───
+
+	let openMenu = $state<number | null>(null);
+
+	const menus: {
+		label: string;
+		items: { label?: string; separator?: boolean; action?: () => void }[];
+	}[] = [
+		{
+			label: 'File',
+			items: [
+				{ label: 'New', action: () => newFile() },
+				{ label: 'Open...', action: () => openFile() },
+				{ separator: true },
+				{ label: 'Save', action: () => saveFile() },
+				{ label: 'Save As...', action: () => saveFileAs() },
+				{ separator: true },
+				{ label: 'Close Window', action: () => getCurrentWindow().close() },
+				{ label: 'Exit', action: () => getCurrentWindow().close() },
+			],
+		},
+		{
+			label: 'Edit',
+			items: [
+				{ label: 'Undo', action: () => editorRef?.undo() },
+				{ label: 'Redo', action: () => editorRef?.redo() },
+				{ separator: true },
+				{ label: 'Cut', action: () => editorRef?.handleCut() },
+				{ label: 'Copy', action: () => editorRef?.handleCopy() },
+				{ label: 'Paste', action: () => editorRef?.handlePaste() },
+				{ separator: true },
+				{ label: 'Select All', action: () => editorRef?.handleSelectAll() },
+			],
+		},
+		{
+			label: 'View',
+			items: [
+				{
+					label: 'Zoom In',
+					action: () => handleSettingsChange({ fontSize: Math.min(32, fontSize + 1) }),
+				},
+				{
+					label: 'Zoom Out',
+					action: () => handleSettingsChange({ fontSize: Math.max(10, fontSize - 1) }),
+				},
+				{ label: 'Reset Zoom', action: () => handleSettingsChange({ fontSize: 14 }) },
+				{ separator: true },
+				{
+					label: 'Toggle Theme',
+					action: () =>
+						handleSettingsChange({
+							theme: resolvedTheme === 'dark' ? 'light' : 'dark',
+						}),
+				},
+				{
+					label: 'Toggle Word Wrap',
+					action: () => handleSettingsChange({ wordWrap: !wordWrap }),
+				},
+			],
+		},
+	];
 
 	// ─── helpers ────────────────────────────────────────
 
@@ -189,159 +250,6 @@
 	onMount(async () => {
 		await loadSettings();
 
-		// Build native menu items
-		const isMac = navigator.userAgent.includes('Macintosh');
-
-		try {
-		const settingsItem = await MenuItem.new({
-			text: 'Settings...',
-			accelerator: 'CmdOrCtrl+,',
-			action: () => openSettings(),
-		});
-
-		// macOS-only app menu (About/Hide/Quit); Windows/Linux convention has no app menu
-		const appSub = isMac
-			? await Submenu.new({
-					text: '',
-					items: [
-						await PredefinedMenuItem.new({ item: { About: null } }),
-						await PredefinedMenuItem.new({ item: 'Separator' }),
-						settingsItem,
-						await PredefinedMenuItem.new({ item: 'Separator' }),
-						await PredefinedMenuItem.new({ item: 'Services' }),
-						await PredefinedMenuItem.new({ item: 'Separator' }),
-						await PredefinedMenuItem.new({ item: 'Hide' }),
-						await PredefinedMenuItem.new({ item: 'HideOthers' }),
-						await PredefinedMenuItem.new({ item: 'ShowAll' }),
-						await PredefinedMenuItem.new({ item: 'Separator' }),
-						await PredefinedMenuItem.new({ item: 'Quit' }),
-					],
-				})
-			: null;
-
-		const fileSub = await Submenu.new({
-			text: 'File',
-			items: [
-				await MenuItem.new({
-					text: 'New',
-					accelerator: 'CmdOrCtrl+N',
-					action: () => newFile(),
-				}),
-				await MenuItem.new({
-					text: 'Open...',
-					accelerator: 'CmdOrCtrl+O',
-					action: () => openFile(),
-				}),
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				...(isMac
-					? []
-					: [settingsItem, await PredefinedMenuItem.new({ item: 'Separator' })]),
-				await MenuItem.new({
-					text: 'Save',
-					accelerator: 'CmdOrCtrl+S',
-					action: () => saveFile(),
-				}),
-				await MenuItem.new({
-					text: 'Save As...',
-					accelerator: 'CmdOrCtrl+Shift+S',
-					action: () => saveFileAs(),
-				}),
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				await MenuItem.new({
-					text: 'Close Window',
-					accelerator: 'CmdOrCtrl+W',
-					action: () => getCurrentWindow().close(),
-				}),
-				...(isMac
-					? []
-					: [
-							await PredefinedMenuItem.new({ item: 'Separator' }),
-							await MenuItem.new({
-								text: 'Exit',
-								action: () => getCurrentWindow().close(),
-							}),
-						]),
-			],
-		});
-
-		const editSub = await Submenu.new({
-			text: 'Edit',
-			items: [
-				await MenuItem.new({
-					text: 'Undo',
-					accelerator: 'CmdOrCtrl+Z',
-					action: () => editorRef?.undo(),
-				}),
-				await MenuItem.new({
-					text: 'Redo',
-					accelerator: 'CmdOrCtrl+Shift+Z',
-					action: () => editorRef?.redo(),
-				}),
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				await MenuItem.new({
-					text: 'Cut',
-					accelerator: 'CmdOrCtrl+X',
-					action: () => editorRef?.handleCut(),
-				}),
-				await MenuItem.new({
-					text: 'Copy',
-					accelerator: 'CmdOrCtrl+C',
-					action: () => editorRef?.handleCopy(),
-				}),
-				await MenuItem.new({
-					text: 'Paste',
-					accelerator: 'CmdOrCtrl+V',
-					action: () => editorRef?.handlePaste(),
-				}),
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				await MenuItem.new({
-					text: 'Select All',
-					accelerator: 'CmdOrCtrl+A',
-					action: () => editorRef?.handleSelectAll(),
-				}),
-			],
-		});
-
-		const viewSub = await Submenu.new({
-			text: 'View',
-			items: [
-				await MenuItem.new({
-					text: 'Zoom In',
-					action: () => handleSettingsChange({ fontSize: Math.min(32, fontSize + 1) }),
-				}),
-				await MenuItem.new({
-					text: 'Zoom Out',
-					action: () => handleSettingsChange({ fontSize: Math.max(10, fontSize - 1) }),
-				}),
-				await MenuItem.new({
-					text: 'Reset Zoom',
-					action: () => handleSettingsChange({ fontSize: 14 }),
-				}),
-				await PredefinedMenuItem.new({ item: 'Separator' }),
-				await MenuItem.new({
-					text: 'Toggle Theme',
-					action: () => {
-						handleSettingsChange({
-							theme: resolvedTheme === 'dark' ? 'light' : 'dark',
-						});
-					},
-				}),
-				await MenuItem.new({
-					text: 'Toggle Word Wrap',
-					action: () => handleSettingsChange({ wordWrap: !wordWrap }),
-				}),
-			],
-		});
-
-		const menu = await Menu.new({
-			items: [appSub, fileSub, editSub, viewSub].filter(
-				(x): x is NonNullable<typeof x> => x != null,
-			),
-		});
-		await menu.setAsAppMenu();
-		} catch (e) {
-			console.error('Failed to build native menu:', e);
-		}
 
 		// Close confirmation lives in Rust (on_window_event + native dialog +
 		// destroy) — the JS dialog path hangs on Windows in every variant.
@@ -453,6 +361,22 @@
 					handleSettingsChange({
 						theme: resolvedTheme === 'dark' ? 'light' : 'dark',
 					});
+				} else if (k === 'n' || k === 'N') {
+					e.preventDefault();
+					newFile();
+				} else if (k === 'o' || k === 'O') {
+					e.preventDefault();
+					openFile();
+				} else if (k === 's' || k === 'S') {
+					e.preventDefault();
+					if (e.shiftKey) saveFileAs();
+					else saveFile();
+				} else if (k === 'w' || k === 'W' || k === 'q' || k === 'Q') {
+					e.preventDefault();
+					getCurrentWindow().close();
+				} else if (k === ',') {
+					e.preventDefault();
+					openSettings();
 				}
 			} else if (e.altKey && !mod && (k === 'z' || k === 'Z')) {
 				e.preventDefault();
@@ -466,18 +390,69 @@
 			) {
 				hideMenu();
 			}
+			if (openMenu !== null && !(e.target as HTMLElement).closest('.menu-bar')) {
+				openMenu = null;
+			}
 		});
 	});
 </script>
 
 <div class="app-root" data-theme={resolvedTheme}>
-	<Editor
-		onReady={onEditorReady}
-		theme={resolvedTheme}
-		{fontSize}
-		{fontFamily}
-		{wordWrap}
-	/>
+	<div class="menu-bar" role="menubar">
+		{#each menus as menu, i (menu.label)}
+			<div
+				class="menu-item"
+				class:open={openMenu === i}
+				role="menuitem"
+				tabindex="-1"
+				onmouseenter={() => (openMenu !== null ? (openMenu = i) : null)}
+				onclick={(e) => {
+					e.stopPropagation();
+					openMenu = openMenu === i ? null : i;
+				}}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						e.stopPropagation();
+						openMenu = openMenu === i ? null : i;
+					}
+				}}
+			>
+				<span class="menu-label">{menu.label}</span>
+				{#if openMenu === i}
+					<div class="menu-dropdown" role="menu">
+						{#each menu.items as item}
+							{#if item.separator}
+								<div class="menu-sep"></div>
+							{:else}
+								<button
+									class="menu-action"
+									role="menuitem"
+									onclick={(e) => {
+										e.stopPropagation();
+										item.action?.();
+										openMenu = null;
+									}}
+								>
+									{item.label}
+								</button>
+							{/if}
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/each}
+	</div>
+
+	<div class="editor-wrap">
+		<Editor
+			onReady={onEditorReady}
+			theme={resolvedTheme}
+			{fontSize}
+			{fontFamily}
+			{wordWrap}
+		/>
+	</div>
 
 	{#if ctxMenu.show}
 		<ContextMenu contextMenu={ctxMenu} onhide={hideMenu} />
@@ -503,7 +478,90 @@
 		background: #ffffff;
 		color: #333333;
 	}
-	:global(.cm-editor) {
+	.app-root {
+		display: flex;
+		flex-direction: column;
 		height: 100vh;
+	}
+	.menu-bar {
+		display: flex;
+		align-items: stretch;
+		background: #252526;
+		border-bottom: 1px solid #3c3c3c;
+		user-select: none;
+		position: relative;
+		z-index: 1000;
+		flex-shrink: 0;
+	}
+	.menu-item {
+		position: relative;
+	}
+	.menu-label {
+		display: block;
+		padding: 8px 14px;
+		font-size: 18px;
+		cursor: default;
+	}
+	.menu-item.open .menu-label,
+	.menu-item:hover .menu-label {
+		background: #37373d;
+	}
+	.menu-dropdown {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		min-width: 230px;
+		background: #252526;
+		border: 1px solid #454545;
+		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+		padding: 4px 0;
+	}
+	.menu-action {
+		display: block;
+		width: 100%;
+		text-align: left;
+		padding: 5px 16px;
+		font-size: 18px;
+		background: none;
+		border: none;
+		color: inherit;
+		cursor: default;
+	}
+	.menu-action:hover {
+		background: #094771;
+	}
+	.menu-sep {
+		height: 1px;
+		background: #3c3c3c;
+		margin: 4px 8px;
+	}
+	.editor-wrap {
+		flex: 1;
+		min-height: 0;
+	}
+	:global(.editor-host) {
+		height: 100%;
+	}
+	:global(.cm-editor) {
+		height: 100%;
+	}
+	.app-root[data-theme="light"] .menu-bar {
+		background: #f3f3f3;
+		border-bottom-color: #d8d8d8;
+	}
+	.app-root[data-theme="light"] .menu-item.open .menu-label,
+	.app-root[data-theme="light"] .menu-item:hover .menu-label {
+		background: #e6e6e6;
+	}
+	.app-root[data-theme="light"] .menu-dropdown {
+		background: #f3f3f3;
+		border-color: #d0d0d0;
+	}
+	.app-root[data-theme="light"] .menu-action:hover {
+		background: #0078d4;
+		color: #ffffff;
+	}
+	.app-root[data-theme="light"] .menu-sep {
+		background: #d8d8d8;
 	}
 </style>
