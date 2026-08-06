@@ -335,16 +335,20 @@
 		});
 		await menu.setAsAppMenu();
 
-		// Close confirmation
+		// Close confirmation — always preventDefault() and destroy() explicitly:
+		// destroy() skips the close-requested event, so this is deterministic on
+		// Windows (relying on default close after an async listener hangs there)
+		// and can't re-enter this handler.
 		const win = getCurrentWindow();
 		win.onCloseRequested(async (event) => {
-			if (isDirty()) {
-				const ok = await showConfirm('You have unsaved changes. Discard and close?', {
+			event.preventDefault();
+			const ok =
+				!isDirty() ||
+				(await showConfirm('You have unsaved changes. Discard and close?', {
 					title: 'Bearpad 2',
 					kind: 'warning',
-				});
-				if (!ok) event.preventDefault();
-			}
+				}));
+			if (ok) await win.destroy();
 		});
 
 		// System theme listener
@@ -486,7 +490,7 @@
 
 	{#if showSettings}
 		<SettingsModal
-			settings={{ theme, fontSize, fontFamily }}
+			settings={{ theme, fontSize, fontFamily, wordWrap }}
 			onChange={handleSettingsChange}
 			onClose={closeSettings}
 		/>
