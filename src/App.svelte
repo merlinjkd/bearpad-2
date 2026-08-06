@@ -53,11 +53,15 @@
 	}
 
 	function updateTitle() {
-		const name = currentPath
-			? currentPath.split('/').pop() || currentPath.split('\\').pop()
-			: 'Untitled';
-		const win = getCurrentWindow();
-		win.setTitle(`Bearpad 2 — ${name}${isDirty() ? ' ●' : ''}`);
+		try {
+			const name = currentPath
+				? currentPath.split('/').pop() || currentPath.split('\\').pop()
+				: 'Untitled';
+			const win = getCurrentWindow();
+			win.setTitle(`Bearpad 2 — ${name}${isDirty() ? ' ●' : ''}`);
+		} catch {
+			/* title is cosmetic; never let it break the mount chain */
+		}
 	}
 
 	// ─── file operations ─────────────────────────────────
@@ -188,6 +192,7 @@
 		// Build native menu items
 		const isMac = navigator.userAgent.includes('Macintosh');
 
+		try {
 		const settingsItem = await MenuItem.new({
 			text: 'Settings...',
 			accelerator: 'CmdOrCtrl+,',
@@ -334,22 +339,12 @@
 			),
 		});
 		await menu.setAsAppMenu();
+		} catch (e) {
+			console.error('Failed to build native menu:', e);
+		}
 
-		// Close confirmation — always preventDefault() and destroy() explicitly:
-		// destroy() skips the close-requested event, so this is deterministic on
-		// Windows (relying on default close after an async listener hangs there)
-		// and can't re-enter this handler.
-		const win = getCurrentWindow();
-		win.onCloseRequested(async (event) => {
-			event.preventDefault();
-			const ok =
-				!isDirty() ||
-				(await showConfirm('You have unsaved changes. Discard and close?', {
-					title: 'Bearpad 2',
-					kind: 'warning',
-				}));
-			if (ok) await win.destroy();
-		});
+		// Close confirmation lives in Rust (on_window_event + native dialog +
+		// destroy) — the JS dialog path hangs on Windows in every variant.
 
 		// System theme listener
 		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {

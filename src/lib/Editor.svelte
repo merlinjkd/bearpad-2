@@ -8,6 +8,11 @@
 	import { searchKeymap } from '@codemirror/search';
 	import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 	import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
+	import { invoke } from '@tauri-apps/api/core';
+
+	function syncDirty(dirty: boolean) {
+		invoke('set_dirty', { dirty }).catch(() => {});
+	}
 
 	interface EditorExposed {
 		hasSelection: () => boolean;
@@ -101,6 +106,7 @@
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) {
 						dirty = true;
+						syncDirty(true);
 					}
 				}),
 			],
@@ -127,30 +133,34 @@
 	}
 
 	$effect(() => {
+		const t = theme;
 		if (!view) return;
 		view.dispatch({
-			effects: themeCompartment.reconfigure(computeTheme(theme)),
+			effects: themeCompartment.reconfigure(computeTheme(t)),
 		});
 	});
 
 	$effect(() => {
+		const s = fontSize;
 		if (!view) return;
 		view.dispatch({
-			effects: fontSizeCompartment.reconfigure(computeFontSize(fontSize)),
+			effects: fontSizeCompartment.reconfigure(computeFontSize(s)),
 		});
 	});
 
 	$effect(() => {
+		const f = fontFamily;
 		if (!view) return;
 		view.dispatch({
-			effects: fontFamilyCompartment.reconfigure(computeFontFamily(fontFamily)),
+			effects: fontFamilyCompartment.reconfigure(computeFontFamily(f)),
 		});
 	});
 
 	$effect(() => {
+		const w = wordWrap;
 		if (!view) return;
 		view.dispatch({
-			effects: wrapCompartment.reconfigure(wordWrap ? [EditorView.lineWrapping] : []),
+			effects: wrapCompartment.reconfigure(w ? [EditorView.lineWrapping] : []),
 		});
 	});
 
@@ -228,6 +238,7 @@
 
 				markSaved: () => {
 					dirty = false;
+					syncDirty(false);
 				},
 
 				isDirty: () => dirty,
@@ -240,6 +251,7 @@
 						selection: { anchor: 0 },
 					});
 					dirty = false;
+					syncDirty(false);
 				},
 			});
 		}
