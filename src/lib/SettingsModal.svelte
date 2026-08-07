@@ -141,7 +141,7 @@
 		background: none;
 		border: none;
 		color: #888;
-		font-size: 18px;
+		font-size: 16px;
 		cursor: pointer;
 		padding: 2px 6px;
 		border-radius: 4px;
@@ -203,7 +203,7 @@
 		border: 1px solid #3c3c3c;
 		background: #2d2d2d;
 		color: #cccccc;
-		font-size: 18px;
+		font-size: 16px;
 		cursor: pointer;
 		display: flex;
 		align-items: center;

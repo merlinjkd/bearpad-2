@@ -41,7 +41,7 @@
 		min-width: 220px;
 		box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-		font-size: 18px;
+		font-size: 16px;
 	}
 	hr {
 		margin: 4px 8px;
@@ -58,7 +58,7 @@
 		background: transparent;
 		color: #cccccc;
 		cursor: pointer;
-		font-size: 18px;
+		font-size: 16px;
 		text-align: left;
 		box-sizing: border-box;
 	}

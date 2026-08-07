@@ -500,7 +500,7 @@
 	.menu-label {
 		display: block;
 		padding: 8px 14px;
-		font-size: 18px;
+		font-size: 16px;
 		cursor: default;
 	}
 	.menu-item.open .menu-label,
@@ -522,7 +522,7 @@
 		width: 100%;
 		text-align: left;
 		padding: 5px 16px;
-		font-size: 18px;
+		font-size: 16px;
 		background: none;
 		border: none;
 		color: inherit;
