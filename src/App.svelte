@@ -474,10 +474,20 @@
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 		background: #1e1e1e;
 		color: #d4d4d4;
+		--menu-bg: #252526;
+		--menu-border: #3c3c3c;
+		--menu-hover: #37373d;
+		--menu-sep: #3c3c3c;
+		--menu-text: #d4d4d4;
 	}
 	:global(body[data-theme="light"]) {
 		background: #ffffff;
 		color: #333333;
+		--menu-bg: #f3f3f3;
+		--menu-border: #d4d4d4;
+		--menu-hover: #e2e2e2;
+		--menu-sep: #d4d4d4;
+		--menu-text: #1a1a1a;
 	}
 	.app-root {
 		display: flex;
@@ -487,8 +497,9 @@
 	.menu-bar {
 		display: flex;
 		align-items: stretch;
-		background: #252526;
-		border-bottom: 1px solid #3c3c3c;
+		background: var(--menu-bg);
+		color: var(--menu-text);
+		border-bottom: 1px solid var(--menu-border);
 		user-select: none;
 		position: relative;
 		z-index: 1000;
@@ -505,15 +516,15 @@
 	}
 	.menu-item.open .menu-label,
 	.menu-item:hover .menu-label {
-		background: #37373d;
+		background: var(--menu-hover);
 	}
 	.menu-dropdown {
 		position: absolute;
 		top: 100%;
 		left: 0;
 		min-width: 230px;
-		background: #252526;
-		border: 1px solid #454545;
+		background: var(--menu-bg);
+		border: 1px solid var(--menu-border);
 		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 		padding: 4px 0;
 	}
@@ -525,15 +536,16 @@
 		font-size: 16px;
 		background: none;
 		border: none;
-		color: inherit;
+		color: var(--menu-text);
 		cursor: default;
 	}
 	.menu-action:hover {
 		background: #094771;
+		color: #ffffff;
 	}
 	.menu-sep {
 		height: 1px;
-		background: #3c3c3c;
+		background: var(--menu-sep);
 		margin: 4px 8px;
 	}
 	.editor-wrap {
