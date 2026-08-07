@@ -156,14 +156,13 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libsoup-3.0-dev \
-            libjavascriptcoregtk-4.1-dev \
-            patchelf
+            libjavascriptcoregtk-4.1-dev
 
       - name: Install dependencies
         run: npm ci || npm install
 
       - name: Build Linux
-        run: npm run tauri build
+        run: npm run tauri build -- --bundles deb
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
@@ -174,8 +173,6 @@ jobs:
         run: |
           version="${{ needs.create-release.outputs.version }}"
           find src-tauri/target/release/bundle/deb -name "*.deb" -exec gh release upload "v$version" {} --clobber \;
-          find src-tauri/target/release/bundle/appimage -name "*.AppImage" -exec gh release upload "v$version" {} --clobber \; 2>/dev/null || true
-          find src-tauri/target/release/bundle/rpm -name "*.rpm" -exec gh release upload "v$version" {} --clobber \; 2>/dev/null || true
 
   publish:
     needs: [create-release, build-windows, build-macos, build-linux]
