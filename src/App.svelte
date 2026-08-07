@@ -29,7 +29,7 @@
 	let currentPath = $state<string | null>(null);
 	let showSettings = $state(false);
 	let theme = $state<Theme>('dark');
-	let fontSize = $state(14);
+	let fontSize = $state(18);
 	let fontFamily = $state("'SF Mono', 'Fira Code', 'Cascadia Code', monospace");
 	let wordWrap = $state(true);
 	let resolvedTheme = $state<'dark' | 'light'>('dark');
@@ -87,7 +87,7 @@
 					label: 'Zoom Out',
 					action: () => handleSettingsChange({ fontSize: Math.max(10, fontSize - 1) }),
 				},
-				{ label: 'Reset Zoom', action: () => handleSettingsChange({ fontSize: 14 }) },
+				{ label: 'Reset Zoom', action: () => handleSettingsChange({ fontSize: 18 }) },
 				{ separator: true },
 				{
 					label: 'Toggle Theme',
@@ -356,7 +356,7 @@
 					handleSettingsChange({ fontSize: Math.max(10, fontSize - 1) });
 				} else if (k === '0') {
 					e.preventDefault();
-					handleSettingsChange({ fontSize: 14 });
+					handleSettingsChange({ fontSize: 18 });
 				} else if (k === '\\') {
 					e.preventDefault();
 					handleSettingsChange({

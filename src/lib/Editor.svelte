@@ -32,7 +32,7 @@
 	let {
 		onReady,
 		theme = 'dark',
-		fontSize = 14,
+		fontSize = 18,
 		fontFamily = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
 		wordWrap = true,
 	}: {
