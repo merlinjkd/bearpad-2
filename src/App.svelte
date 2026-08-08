@@ -32,6 +32,7 @@
 	let fontSize = $state(18);
 	let fontFamily = $state("'SF Mono', 'Fira Code', 'Cascadia Code', monospace");
 	let wordWrap = $state(true);
+	let spellcheck = $state(true);
 	let resolvedTheme = $state<'dark' | 'light'>('dark');
 
 	let ctxMenu = $state<{ show: boolean; x: number; y: number; items: any[] }>({
@@ -99,6 +100,10 @@
 				{
 					label: 'Toggle Word Wrap',
 					action: () => handleSettingsChange({ wordWrap: !wordWrap }),
+				},
+				{
+					label: 'Toggle Spell Check',
+					action: () => handleSettingsChange({ spellcheck: !spellcheck }),
 				},
 			],
 		},
@@ -202,6 +207,7 @@
 			if (s.fontSize != null) fontSize = s.fontSize;
 			if (s.fontFamily) fontFamily = s.fontFamily;
 			if (s.wordWrap != null) wordWrap = s.wordWrap;
+			if (s.spellcheck != null) spellcheck = s.spellcheck;
 		} catch { /* defaults */ }
 		resolveTheme();
 	}
@@ -209,7 +215,7 @@
 	async function saveSettings() {
 		try {
 			await invoke('write_settings', {
-				json: JSON.stringify({ theme, fontSize, fontFamily, wordWrap }),
+				json: JSON.stringify({ theme, fontSize, fontFamily, wordWrap, spellcheck }),
 			});
 		} catch (e) {
 			console.error('Failed to save settings:', e);
@@ -230,12 +236,13 @@
 	}
 
 	function handleSettingsChange(
-		patch: Partial<{ theme: Theme; fontSize: number; fontFamily: string; wordWrap: boolean }>,
+		patch: Partial<{ theme: Theme; fontSize: number; fontFamily: string; wordWrap: boolean; spellcheck: boolean }>,
 	) {
 		if (patch.theme !== undefined) theme = patch.theme;
 		if (patch.fontSize !== undefined) fontSize = patch.fontSize;
 		if (patch.fontFamily !== undefined) fontFamily = patch.fontFamily;
 		if (patch.wordWrap !== undefined) wordWrap = patch.wordWrap;
+		if (patch.spellcheck !== undefined) spellcheck = patch.spellcheck;
 		resolveTheme();
 		saveSettings();
 	}
@@ -454,6 +461,7 @@
 			{fontSize}
 			{fontFamily}
 			{wordWrap}
+			{spellcheck}
 		/>
 	</div>
 

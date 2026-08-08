@@ -74,6 +74,8 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          LIBCLANG_PATH: C:\Program Files\LLVM\bin
+          PATH: ${{ env.PATH }};C:\Program Files\LLVM\bin
 
       - name: Upload Windows Artifacts
         shell: pwsh
@@ -119,6 +121,8 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=8192"
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          LIBCLANG_PATH: /Library/Developer/CommandLineTools/usr/lib
+          DYLD_LIBRARY_PATH: /Library/Developer/CommandLineTools/usr/lib
         run: npm run tauri build -- --target universal-apple-darwin
 
       - name: Upload macOS Artifacts
@@ -156,7 +160,8 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libsoup-3.0-dev \
-            libjavascriptcoregtk-4.1-dev
+            libjavascriptcoregtk-4.1-dev \
+            libclang-dev
 
       - name: Install dependencies
         run: npm ci || npm install
@@ -166,6 +171,8 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          LIBCLANG_PATH: /usr/lib/llvm-18/lib
+          LD_LIBRARY_PATH: /usr/lib/llvm-18/lib
 
       - name: Upload Linux Artifacts
         env:

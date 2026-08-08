@@ -4,6 +4,7 @@
 		fontSize: number;
 		fontFamily: string;
 		wordWrap: boolean;
+		spellcheck: boolean;
 	}
 
 	let {
@@ -91,6 +92,19 @@
 					value={settings.wordWrap ? 'on' : 'off'}
 					onchange={(e) =>
 						onChange({ wordWrap: (e.target as HTMLSelectElement).value === 'on' })}
+				>
+					<option value="on">On</option>
+					<option value="off">Off</option>
+				</select>
+			</div>
+
+			<div class="field">
+				<label for="spellcheck-select">Spell Check (English)</label>
+				<select
+					id="spellcheck-select"
+					value={settings.spellcheck ? 'on' : 'off'}
+					onchange={(e) =>
+						onChange({ spellcheck: (e.target as HTMLSelectElement).value === 'on' })}
 				>
 					<option value="on">On</option>
 					<option value="off">Off</option>

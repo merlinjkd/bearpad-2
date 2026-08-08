@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { EditorView, keymap } from '@codemirror/view';
-	import { EditorState, Compartment } from '@codemirror/state';
+	import { EditorView, keymap, ViewPlugin, Decoration, type DecorationSet, type ViewUpdate } from '@codemirror/view';
+	import { EditorState, Compartment, StateEffect, StateField } from '@codemirror/state';
 	import { defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands';
 	import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 	import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
@@ -35,12 +35,14 @@
 		fontSize = 18,
 		fontFamily = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
 		wordWrap = true,
+		spellcheck = true,
 	}: {
 		onReady?: (ref: EditorExposed) => void;
 		theme?: string;
 		fontSize?: number;
 		fontFamily?: string;
 		wordWrap?: boolean;
+		spellcheck?: boolean;
 	} = $props();
 
 	let container: HTMLDivElement;
@@ -51,6 +53,61 @@
 	const fontSizeCompartment = new Compartment();
 	const fontFamilyCompartment = new Compartment();
 	const wrapCompartment = new Compartment();
+	const spellcheckCompartment = new Compartment();
+
+	const setSpellErrors = StateEffect.define<{ from: number; to: number }[]>();
+
+	const spellField = StateField.define<DecorationSet>({
+		create: () => Decoration.none,
+		update(deco, tr) {
+			deco = deco.map(tr.changes);
+			for (const e of tr.effects) {
+				if (e.is(setSpellErrors)) {
+					deco = Decoration.set(
+						e.value.map((r) => Decoration.mark({ class: 'cm-spell-error' }).range(r.from, r.to))
+					);
+				}
+			}
+			return deco;
+		},
+	});
+
+	const spellUnderline = EditorView.baseTheme({
+		'.cm-spell-error': { textDecoration: 'underline wavy #e74c3c', textDecorationSkipInk: 'none' },
+	});
+
+	function spellCheckPlugin() {
+		let timer: number | undefined;
+		let gen = 0;
+		return ViewPlugin.fromClass(
+			class {
+				update(update: ViewUpdate) {
+					if (!update.docChanged) return;
+					clearTimeout(timer);
+					const myGen = ++gen;
+					timer = window.setTimeout(async () => {
+						if (myGen !== gen) return;
+						try {
+							const text = update.state.doc.toString();
+							const hits = await invoke<{ start: number; end: number; word: string }[]>(
+								'spell_check',
+								{ text }
+							);
+							if (myGen !== gen) return;
+							update.view.dispatch({
+								effects: setSpellErrors.of(hits.map((h) => ({ from: h.start, to: h.end }))),
+							});
+						} catch {
+							/* not running inside Tauri (dev browser) */
+						}
+					}, 400);
+				}
+				destroy() {
+					clearTimeout(timer);
+				}
+			}
+		);
+	}
 
 	function computeTheme(themeName: string) {
 		if (themeName === 'light') {
@@ -102,6 +159,7 @@
 				fontSizeCompartment.of(computeFontSize(fontSize)),
 				fontFamilyCompartment.of(computeFontFamily(fontFamily)),
 				wrapCompartment.of(wordWrap ? [EditorView.lineWrapping] : []),
+				spellcheckCompartment.of(spellcheck ? [spellUnderline, spellField, spellCheckPlugin()] : []),
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) {
 						dirty = true;
@@ -160,6 +218,14 @@
 		if (!view) return;
 		view.dispatch({
 			effects: wrapCompartment.reconfigure(w ? [EditorView.lineWrapping] : []),
+		});
+	});
+
+	$effect(() => {
+		const s = spellcheck;
+		if (!view) return;
+		view.dispatch({
+			effects: spellcheckCompartment.reconfigure(s ? [spellUnderline, spellField, spellCheckPlugin()] : []),
 		});
 	});
 
