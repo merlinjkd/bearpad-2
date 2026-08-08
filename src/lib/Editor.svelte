@@ -72,6 +72,9 @@
 		},
 	});
 
+	// must be provided to the decorations facet or CM never draws the marks
+	const spellDecorations = EditorView.decorations.from(spellField, (d) => d);
+
 	const spellUnderline = EditorView.baseTheme({
 		'.cm-spell-error': { textDecoration: 'underline wavy #e74c3c', textDecorationSkipInk: 'none' },
 	});
@@ -159,7 +162,7 @@
 				fontSizeCompartment.of(computeFontSize(fontSize)),
 				fontFamilyCompartment.of(computeFontFamily(fontFamily)),
 				wrapCompartment.of(wordWrap ? [EditorView.lineWrapping] : []),
-				spellcheckCompartment.of(spellcheck ? [spellUnderline, spellField, spellCheckPlugin()] : []),
+				spellcheckCompartment.of(spellcheck ? [spellUnderline, spellField, spellDecorations, spellCheckPlugin()] : []),
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) {
 						dirty = true;
@@ -225,7 +228,7 @@
 		const s = spellcheck;
 		if (!view) return;
 		view.dispatch({
-			effects: spellcheckCompartment.reconfigure(s ? [spellUnderline, spellField, spellCheckPlugin()] : []),
+			effects: spellcheckCompartment.reconfigure(s ? [spellUnderline, spellField, spellDecorations, spellCheckPlugin()] : []),
 		});
 	});
 

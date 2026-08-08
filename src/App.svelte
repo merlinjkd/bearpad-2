@@ -276,6 +276,8 @@
 
 	function onContextMenu(e: MouseEvent) {
 		e.preventDefault();
+		const isMac = /mac/i.test(navigator.platform);
+		const mod = isMac ? '⌘' : 'Ctrl+';
 		const isInsideEditor = !!(e.target as HTMLElement).closest('.cm-editor');
 		const hasSelection = editorRef?.hasSelection() || false;
 
@@ -284,15 +286,15 @@
 		if (isInsideEditor) {
 			if (hasSelection) {
 				items.push(
-					{ label: 'Cut', shortcut: '⌘X', onClick: () => editorRef?.handleCut() },
-					{ label: 'Copy', shortcut: '⌘C', onClick: () => editorRef?.handleCopy() },
+					{ label: 'Cut', shortcut: `${mod}X`, onClick: () => editorRef?.handleCut() },
+					{ label: 'Copy', shortcut: `${mod}C`, onClick: () => editorRef?.handleCopy() },
 				);
 			}
 			items.push(
-				{ label: 'Paste', shortcut: '⌘V', onClick: () => editorRef?.handlePaste() },
+				{ label: 'Paste', shortcut: `${mod}V`, onClick: () => editorRef?.handlePaste() },
 				{ separator: true },
-				{ label: 'Undo', shortcut: '⌘Z', onClick: () => editorRef?.undo() },
-				{ label: 'Redo', shortcut: '⇧⌘Z', onClick: () => editorRef?.redo() },
+				{ label: 'Undo', shortcut: `${mod}Z`, onClick: () => editorRef?.undo() },
+				{ label: 'Redo', shortcut: `${isMac ? '⇧⌘' : 'Ctrl+Shift+'}Z`, onClick: () => editorRef?.redo() },
 				{ separator: true },
 				{
 					label: 'lowercase',
@@ -324,7 +326,7 @@
 
 		items.push({
 			label: 'Select All',
-			shortcut: '⌘A',
+			shortcut: `${mod}A`,
 			onClick: () => editorRef?.handleSelectAll(),
 		});
 
