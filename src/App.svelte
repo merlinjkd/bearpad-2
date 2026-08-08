@@ -225,6 +225,8 @@
 		} else {
 			resolvedTheme = 'dark';
 		}
+		// body needs the attr too — theme CSS vars are keyed on body[data-theme]
+		document.body.dataset.theme = resolvedTheme;
 	}
 
 	function handleSettingsChange(
