@@ -20,6 +20,7 @@
 		markSaved: () => void;
 		isDirty: () => boolean;
 		getContent: () => string;
+		recheckSpelling: () => void;
 		loadContent: (content: string) => void;
 	}
 
@@ -48,7 +49,12 @@
 
 	const menus: {
 		label: string;
-		items: { label?: string; separator?: boolean; action?: () => void }[];
+		items: {
+			label?: string;
+			separator?: boolean;
+			action?: () => void;
+			disabled?: boolean | (() => boolean);
+		}[];
 	}[] = [
 		{
 			label: 'File',
@@ -75,6 +81,22 @@
 				{ label: 'Paste', action: () => editorRef?.handlePaste() },
 				{ separator: true },
 				{ label: 'Select All', action: () => editorRef?.handleSelectAll() },
+				{ separator: true },
+				{
+					label: 'lowercase',
+					disabled: () => !(editorRef?.hasSelection() ?? false),
+					action: () => editorRef?.transformSelection('lowercase'),
+				},
+				{
+					label: 'UPPERCASE',
+					disabled: () => !(editorRef?.hasSelection() ?? false),
+					action: () => editorRef?.transformSelection('uppercase'),
+				},
+				{
+					label: 'Title Case',
+					disabled: () => !(editorRef?.hasSelection() ?? false),
+					action: () => editorRef?.transformSelection('propercase'),
+				},
 			],
 		},
 		{
@@ -322,6 +344,28 @@
 				},
 				{ separator: true },
 			);
+
+			// right-clicking a misspelled word offers to learn it
+			const errWord = (e.target as HTMLElement)
+				.closest('.cm-spell-error')
+				?.textContent?.trim();
+			if (errWord) {
+				items.push(
+					{ separator: true },
+					{
+						label: `Add "${errWord}" to dictionary`,
+						onClick: async () => {
+							try {
+								await invoke('add_to_dictionary', { word: errWord });
+								editorRef?.recheckSpelling();
+							} catch {
+								/* ignore */
+							}
+							hideMenu();
+						},
+					},
+				);
+			}
 		}
 
 		items.push({
@@ -434,14 +478,18 @@
 				{#if openMenu === i}
 					<div class="menu-dropdown" role="menu">
 						{#each menu.items as item}
+							{@const disabled = typeof item.disabled === 'function' ? item.disabled() : item.disabled}
 							{#if item.separator}
 								<div class="menu-sep"></div>
 							{:else}
 								<button
 									class="menu-action"
+									class:menu-disabled={disabled}
 									role="menuitem"
+									disabled={disabled}
 									onclick={(e) => {
 										e.stopPropagation();
+										if (disabled) return;
 										item.action?.();
 										openMenu = null;
 									}}
@@ -554,6 +602,15 @@
 	.menu-action:hover {
 		background: #094771;
 		color: #ffffff;
+	}
+	.menu-action.menu-disabled,
+	.menu-action:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.menu-action:disabled:hover {
+		background: none;
+		color: var(--menu-text);
 	}
 	.menu-sep {
 		height: 1px;

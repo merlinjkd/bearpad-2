@@ -170,6 +170,36 @@ fn spell_check(text: String, state: tauri::State<'_, Mutex<Option<SpellChecker>>
     }
 }
 
+#[tauri::command]
+fn add_to_dictionary(
+    word: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Mutex<Option<SpellChecker>>>,
+) -> Result<(), String> {
+    let word = word.trim();
+    if word.is_empty() {
+        return Ok(());
+    }
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let custom = dir.join("custom_words.txt");
+    let existing = fs::read_to_string(&custom).unwrap_or_default();
+    if !existing.lines().any(|l| l == word) {
+        let mut f = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&custom)
+            .map_err(|e| e.to_string())?;
+        use std::io::Write;
+        writeln!(f, "{word}").map_err(|e| e.to_string())?;
+    }
+    if let Ok(mut h) = state.lock() {
+        if let Some(h) = h.as_mut() {
+            h.0.add(word);
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -195,6 +225,10 @@ mod tests {
         assert_eq!(&text[m.start..m.end], "mispeling");
         assert!(h.check("correct") == CheckResult::FoundInDictionary);
         assert!(h.check("zzqqxxyy") == CheckResult::MissingInDictionary);
+        // user-added words flip the result (custom dictionary path)
+        let mut h = h;
+        h.add("zzqqxxyy");
+        assert!(h.check("zzqqxxyy") == CheckResult::FoundInDictionary);
     }
 }
 
@@ -214,7 +248,14 @@ pub fn run() {
                 dict_dir.join("en_US.aff").to_str().unwrap(),
                 dict_dir.join("en_US.dic").to_str().unwrap(),
             );
-            app.manage(Mutex::new(Some(SpellChecker(h))));
+            // load persisted user-added words
+            let mut checker = SpellChecker(h);
+            if let Ok(words) = fs::read_to_string(dir.join("custom_words.txt")) {
+                for w in words.lines() {
+                    checker.0.add(w);
+                }
+            }
+            app.manage(Mutex::new(Some(checker)));
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -249,6 +290,7 @@ pub fn run() {
             write_settings,
             set_dirty,
             spell_check,
+            add_to_dictionary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -27,6 +27,7 @@
 		isDirty: () => boolean;
 		getContent: () => string;
 		loadContent: (content: string) => void;
+		recheckSpelling: () => void;
 	}
 
 	let {
@@ -56,6 +57,7 @@
 	const spellcheckCompartment = new Compartment();
 
 	const setSpellErrors = StateEffect.define<{ from: number; to: number }[]>();
+	const recheckSpell = StateEffect.define<null>();
 
 	const spellField = StateField.define<DecorationSet>({
 		create: () => Decoration.none,
@@ -85,7 +87,10 @@
 		return ViewPlugin.fromClass(
 			class {
 				update(update: ViewUpdate) {
-					if (!update.docChanged) return;
+					const isRecheck = update.transactions.some((tr) =>
+						tr.effects.some((e) => e.is(recheckSpell))
+					);
+					if (!update.docChanged && !isRecheck) return;
 					clearTimeout(timer);
 					const myGen = ++gen;
 					timer = window.setTimeout(async () => {
@@ -304,7 +309,7 @@
 					if (type === 'lowercase') newText = text.toLowerCase();
 					else if (type === 'uppercase') newText = text.toUpperCase();
 					else if (type === 'propercase')
-						newText = text.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+						newText = text.toLowerCase().replace(/\b(?<!['\u2019])\w/g, (c) => c.toUpperCase());
 					replaceSelection(newText);
 				},
 
@@ -325,7 +330,11 @@
 					dirty = false;
 					syncDirty(false);
 				},
-			});
+
+				recheckSpelling: () => {
+					view.dispatch({ effects: recheckSpell.of(null) });
+				},
+				});
 		}
 	});
 
